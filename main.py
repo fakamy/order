@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-from database import init_db, add_order, get_orders, update_order_status, get_order
-from datetime import datetime
+from database import init_db, add_order, get_orders_by_date, update_order_status, get_order
+from datetime import datetime, date
+import pytz
 import os
 
 app = Flask(__name__)
@@ -29,14 +30,32 @@ def barista():
 
 @app.route('/get_orders')
 def get_all_orders():
-    orders = get_orders(
-        include_completed=True)  # Modify this function in database.py
+    selected_date = request.args.get('date')
+    kl_tz = pytz.timezone('Asia/Kuala_Lumpur')
+
+    if selected_date:
+        try:
+            selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+        except ValueError:
+            # If the date is invalid, use the current date
+            selected_date = datetime.now(kl_tz).date()
+    else:
+        # If no date is provided, use the current date
+        selected_date = datetime.now(kl_tz).date()
+
+    print(f"Fetching orders for date: {selected_date}")  # Debug log
+
+    orders = get_orders_by_date(selected_date)
+
+    print(f"Number of orders fetched: {len(orders)}")  # Debug log
+
     return jsonify(orders)
 
 
 @app.route('/complete_order/<int:order_id>', methods=['POST'])
 def complete_order(order_id):
-    completion_time = datetime.now().isoformat()
+    kl_tz = pytz.timezone('Asia/Kuala_Lumpur')
+    completion_time = datetime.now(kl_tz).astimezone(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S')
     update_order_status(order_id, 'completed', completion_time)
     return jsonify({"success": True})
 

@@ -1,5 +1,6 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, date, timedelta
+import pytz
 
 
 def init_db():
@@ -31,7 +32,8 @@ def init_db():
 def add_order(item, name, phone, location):
     conn = sqlite3.connect('coffee_orders.db')
     c = conn.cursor()
-    order_date = datetime.now().isoformat()
+    kl_tz = pytz.timezone('Asia/Kuala_Lumpur')
+    order_date = datetime.now(kl_tz).astimezone(pytz.UTC).isoformat()
     c.execute(
         "INSERT INTO orders (item, name, phone, location, status, order_date) VALUES (?, ?, ?, ?, ?, ?)",
         (item, name, phone, location, 'pending', order_date))
@@ -73,7 +75,7 @@ def update_order_status(order_id, status, completion_time=None):
     c = conn.cursor()
     if completion_time:
         c.execute("UPDATE orders SET status=?, completion_time=? WHERE id=?",
-                  (status, completion_time, order_id))
+                  (status, completion_time.isoformat(), order_id))
     else:
         c.execute("UPDATE orders SET status=? WHERE id=?", (status, order_id))
     conn.commit()
@@ -98,3 +100,42 @@ def get_order(order_id):
             "completion_time": order[7]
         }
     return None
+
+def get_orders_by_date(selected_date):
+    conn = sqlite3.connect('coffee_orders.db')
+    c = conn.cursor()
+
+    kl_tz = pytz.timezone('Asia/Kuala_Lumpur')
+    date_start = kl_tz.localize(datetime.combine(selected_date, datetime.min.time()))
+    date_end = date_start + timedelta(days=1)
+
+    date_start_utc = date_start.astimezone(pytz.UTC)
+    date_end_utc = date_end.astimezone(pytz.UTC)
+
+    c.execute("""
+        SELECT *, 
+               ROW_NUMBER() OVER (ORDER BY order_date) as daily_order_number
+        FROM orders 
+        WHERE order_date >= ? AND order_date < ?
+        ORDER BY order_date DESC
+    """, (date_start_utc.isoformat(), date_end_utc.isoformat()))
+
+    column_names = [description[0] for description in c.description]
+
+    orders = []
+    for row in c.fetchall():
+        order = {}
+        for i, column in enumerate(column_names):
+            if i < len(row):
+                if column in ['order_date', 'completion_time'] and row[i]:
+                    utc_time = datetime.fromisoformat(row[i].replace('Z', '+00:00'))
+                    kl_time = utc_time.astimezone(kl_tz)
+                    order[column] = kl_time.isoformat()  # Use ISO format for easy parsing in JavaScript
+                else:
+                    order[column] = row[i]
+            else:
+                order[column] = None
+        orders.append(order)
+
+    conn.close()
+    return orders

@@ -6,6 +6,7 @@
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Barista Display</title>
                 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
                 <style>
                                 body {
                                                 font-family: Arial, sans-serif;
@@ -102,18 +103,48 @@
                                                 display: inline-block;
                                                 margin-right: 15px;
                                 }
+
+                                .summary-total {
+                                                font-weight: bold;
+                                                margin-top: 10px;
+                                }
+
+                                #date-filter {
+                                                margin-bottom: 20px;
+                                                text-align: center;
+                                }
+
+                                #date-filter input {
+                                                padding: 5px;
+                                                font-size: 16px;
+                                }
+
+                                #order-graph {
+                                                width: 100%;
+                                                max-width: 800px;
+                                                margin: 20px auto;
+                                                display: none;
+                                }
                 </style>
 </head>
 
 <body>
                 <h1>Barista Display</h1>
+                <div id="date-filter">
+                                <label for="selected-date">Select Date: </label>
+                                <input type="date" id="selected-date">
+                </div>
                 <div class="toggle-buttons">
                                 <button class="toggle-button" id="toggle-all-summary">Toggle All Orders Summary</button>
                                 <button class="toggle-button" id="toggle-pending-summary">Toggle Pending Orders
                                                 Summary</button>
+                                <button class="toggle-button" id="toggle-order-graph">Toggle Order Graph</button>
                 </div>
                 <div class="summary" id="all-order-summary" style="display: none;"></div>
                 <div class="summary" id="pending-order-summary" style="display: none;"></div>
+                <div id="order-graph">
+                                <canvas id="orderChart"></canvas>
+                </div>
                 <div class="filter-buttons">
                                 <button class="filter-button active" data-filter="all">All Orders</button>
                                 <button class="filter-button" data-filter="pending">Pending Orders</button>
@@ -122,6 +153,27 @@
                 <div id="orders-container"></div>
 
                 <script>
+                                function setDefaultDate() {
+                                                const now = new Date();
+                                                const offset = 8 * 60; // KL is UTC+8
+                                                const klTime = new Date(now.getTime() + (offset * 60 * 1000));
+                                                const today = klTime.toISOString().split('T')[0];
+                                                document.getElementById('selected-date').value = today;
+                                }
+
+                                function formatDate(dateString) {
+                                                const options = {
+                                                                year: 'numeric',
+                                                                month: 'long',
+                                                                day: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                                second: '2-digit',
+                                                                timeZone: 'Asia/Kuala_Lumpur'
+                                                };
+                                                return new Date(dateString).toLocaleString('en-US', options);
+                                }
+
                                 function createOrderElement(order) {
                                                 const orderElement = document.createElement('div');
                                                 orderElement.className = `order-item ${order.status}`;
@@ -138,7 +190,7 @@
                         ${completionTime ? `<p>Completion Time: ${completionTime.toLocaleString()} (${timeDiff.toFixed(2)} minutes)</p>` : ''}
                 </div>
                 <div>
-                        <span class="order-number">Order #${order.id}</span>
+                        <span class="order-number">Order #${order.daily_order_number}</span>
                         ${order.status === 'pending' ? `<button class="complete-button" onclick="completeOrder(${order.id})">Complete Order</button>` : ''}
                 </div>
             `;
@@ -160,18 +212,24 @@
                                                 for (const [item, count] of Object.entries(summary)) {
                                                                 summaryElement.innerHTML += `<span class="summary-item">${item}: ${count}</span>`;
                                                 }
+                                                summaryElement.innerHTML += `<div class="summary-total">Total Orders: ${orders.length}</div>`;
                                 }
 
                                 async function fetchOrders() {
-                                                const response = await fetch('/get_orders');
+                                                const selectedDate = document.getElementById('selected-date').value;
+                                                console.log("Fetching orders for date:", selectedDate);  // Debug log
+                                                const response = await fetch(`/get_orders?date=${selectedDate}`);
                                                 const orders = await response.json();
+                                                console.log("Received orders:", orders);  // Debug log
                                                 return orders;
                                 }
 
                                 async function displayOrders(filter = 'all') {
                                                 const orders = await fetchOrders();
+                                                console.log("Displaying orders:", orders);  // Debug log
                                                 updateSummary(orders, 'all-order-summary');
                                                 updateSummary(orders.filter(order => order.status === 'pending'), 'pending-order-summary');
+                                                createOrderGraph(orders);
                                                 const ordersContainer = document.getElementById('orders-container');
                                                 ordersContainer.innerHTML = '';
                                                 orders.forEach(order => {
@@ -191,6 +249,59 @@
 
                                 function getCurrentFilter() {
                                                 return document.querySelector('.filter-button.active').dataset.filter;
+                                }
+
+                                let orderChart;
+
+                                function createOrderGraph(orders) {
+                                                const hourlyOrders = new Array(24).fill(0);
+                                                orders.forEach(order => {
+                                                                const orderHour = new Date(order.order_date).getHours();
+                                                                hourlyOrders[orderHour]++;
+                                                });
+
+                                                const ctx = document.getElementById('orderChart').getContext('2d');
+
+                                                if (orderChart) {
+                                                                orderChart.destroy();
+                                                }
+
+                                                orderChart = new Chart(ctx, {
+                                                                type: 'bar',
+                                                                data: {
+                                                                                labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+                                                                                datasets: [{
+                                                                                                label: 'Number of Orders',
+                                                                                                data: hourlyOrders,
+                                                                                                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                                                                                                borderColor: 'rgba(75, 192, 192, 1)',
+                                                                                                borderWidth: 1
+                                                                                }]
+                                                                },
+                                                                options: {
+                                                                                scales: {
+                                                                                                y: {
+                                                                                                                beginAtZero: true,
+                                                                                                                title: {
+                                                                                                                                display: true,
+                                                                                                                                text: 'Number of Orders'
+                                                                                                                }
+                                                                                                },
+                                                                                                x: {
+                                                                                                                title: {
+                                                                                                                                display: true,
+                                                                                                                                text: 'Hour of Day'
+                                                                                                                }
+                                                                                                }
+                                                                                },
+                                                                                plugins: {
+                                                                                                title: {
+                                                                                                                display: true,
+                                                                                                                text: 'Orders by Hour'
+                                                                                                }
+                                                                                }
+                                                                }
+                                                });
                                 }
 
                                 document.querySelectorAll('.filter-button').forEach(button => {
@@ -213,8 +324,21 @@
                                                 this.classList.toggle('active');
                                 });
 
+                                document.getElementById('toggle-order-graph').addEventListener('click', function () {
+                                                const graph = document.getElementById('order-graph');
+                                                graph.style.display = graph.style.display === 'none' ? 'block' : 'none';
+                                                this.classList.toggle('active');
+                                });
+
+                                document.getElementById('selected-date').addEventListener('change', () => {
+                                                displayOrders(getCurrentFilter());
+                                });
+
                                 displayOrders();
                                 setInterval(() => displayOrders(getCurrentFilter()), 10000); // Refresh every 10 seconds
+
+                                // Call this function when the page loads
+                                setDefaultDate();
                 </script>
 </body>
 
