@@ -55,7 +55,7 @@ def get_all_orders():
 @app.route('/complete_order/<int:order_id>', methods=['POST'])
 def complete_order(order_id):
     kl_tz = pytz.timezone('Asia/Kuala_Lumpur')
-    completion_time = datetime.now(kl_tz).astimezone(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S')
+    completion_time = datetime.now(kl_tz).isoformat()
     update_order_status(order_id, 'completed', completion_time)
     return jsonify({"success": True})
 

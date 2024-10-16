@@ -74,8 +74,14 @@ def update_order_status(order_id, status, completion_time=None):
     conn = sqlite3.connect('coffee_orders.db')
     c = conn.cursor()
     if completion_time:
-        c.execute("UPDATE orders SET status=?, completion_time=? WHERE id=?",
-                  (status, completion_time.isoformat(), order_id))
+        if isinstance(completion_time, str):
+            # If it's already a string, use it as is
+            c.execute("UPDATE orders SET status=?, completion_time=? WHERE id=?",
+                      (status, completion_time, order_id))
+        else:
+            # If it's a datetime object, convert it to ISO format
+            c.execute("UPDATE orders SET status=?, completion_time=? WHERE id=?",
+                      (status, completion_time.isoformat(), order_id))
     else:
         c.execute("UPDATE orders SET status=? WHERE id=?", (status, order_id))
     conn.commit()
