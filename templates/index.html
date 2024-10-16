@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Coffee Order</title>
+                <style>
+                                * {
+                                                box-sizing: border-box;
+                                                margin: 0;
+                                                padding: 0;
+                                }
+
+                                body {
+                                                font-family: Arial, sans-serif;
+                                                line-height: 1.6;
+                                                background-color: #f4f4f4;
+                                                min-height: 100vh;
+                                                display: flex;
+                                                flex-direction: column;
+                                }
+
+                                .header {
+                                                background-color: #00a5ab;
+                                                /* Replace with your logo's background color */
+                                                padding: 20px;
+                                                text-align: center;
+                                }
+
+                                .logo {
+                                                max-width: 200px;
+                                                height: auto;
+                                }
+
+                                .content {
+                                                padding: 20px;
+                                                max-width: 800px;
+                                                margin: 0 auto;
+                                                flex-grow: 1;
+                                                display: flex;
+                                                flex-direction: column;
+                                }
+
+                                h1 {
+                                                text-align: center;
+                                                margin-bottom: 20px;
+                                                color: #333;
+                                                /* Adjust this color to match your design */
+                                }
+
+                                .coffee-items {
+                                                display: grid;
+                                                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                                                gap: 15px;
+                                                margin-bottom: 20px;
+                                                flex-grow: 1;
+                                }
+
+                                .coffee-item {
+                                                background-color: #fff;
+                                                border: 1px solid #ddd;
+                                                border-radius: 5px;
+                                                padding: 20px;
+                                                text-align: center;
+                                                cursor: pointer;
+                                                transition: background-color 0.3s;
+                                                display: flex;
+                                                flex-direction: column;
+                                                align-items: center;
+                                                margin: 5px;
+                                }
+
+                                .coffee-item:hover {
+                                                background-color: #f0f0f0;
+                                }
+
+                                .coffee-item.selected {
+                                                background-color: #00a5ab;
+                                                color: white;
+                                }
+
+                                .coffee-item img {
+                                                width: 100px;
+                                                height: 100px;
+                                                object-fit: contain;
+                                                margin-bottom: 15px;
+                                }
+
+                                #checkout-page {
+                                                display: none;
+                                                background-color: #fff;
+                                                border-radius: 5px;
+                                                padding: 20px;
+                                                margin-top: 20px;
+                                }
+
+                                form {
+                                                display: flex;
+                                                flex-direction: column;
+                                                gap: 15px;
+                                }
+
+                                input,
+                                button {
+                                                padding: 10px;
+                                                border: 1px solid #ddd;
+                                                border-radius: 5px;
+                                                font-size: 16px;
+                                }
+
+                                button {
+                                                background-color: #00a5ab;
+                                                color: white;
+                                                border: none;
+                                                cursor: pointer;
+                                                transition: background-color 0.3s;
+                                }
+
+                                button:hover {
+                                                background-color: #008c91;
+                                }
+
+                                #proceed-to-checkout {
+                                                width: 100%;
+                                                padding: 15px;
+                                                font-size: 18px;
+                                                margin-top: 20px;
+                                                position: sticky;
+                                                bottom: 20px;
+                                                background-color: #00a5ab;
+                                }
+
+                                #proceed-to-checkout:hover {
+                                                background-color: #008c91;
+                                }
+
+                                @media (max-width: 600px) {
+                                                .content {
+                                                                padding: 10px;
+                                                }
+
+                                                .coffee-items {
+                                                                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                                                }
+
+                                                .coffee-item {
+                                                                padding: 15px;
+                                                }
+
+                                                .coffee-item img {
+                                                                width: 80px;
+                                                                height: 80px;
+                                                                margin-bottom: 10px;
+                                                }
+
+                                                #proceed-to-checkout {
+                                                                bottom: 10px;
+                                                }
+                                }
+                </style>
+</head>
+
+<body>
+                <div class="header">
+                                <img src="{{ url_for('static', filename='logo.png') }}" alt="Coffee Shop Logo"
+                                                class="logo">
+                </div>
+                <div id="order-page">
+                                <h1>Choose your drink</h1>
+                                <div class="coffee-items">
+                                                <div class="coffee-item" data-item="Latte">
+                                                                <img src="{{ url_for('static', filename='latte.png') }}"
+                                                                                alt="Latte">
+                                                                <span>Latte</span>
+                                                </div>
+                                                <div class="coffee-item" data-item="Cappuccino">
+                                                                <img src="{{ url_for('static', filename='cappuccino.png') }}"
+                                                                                alt="Cappuccino">
+                                                                <span>Cappuccino</span>
+                                                </div>
+                                                <div class="coffee-item" data-item="Flat White">
+                                                                <img src="{{ url_for('static', filename='flat_white.png') }}"
+                                                                                alt="Flat White">
+                                                                <span>Flat White</span>
+                                                </div>
+                                                <div class="coffee-item" data-item="Espresso">
+                                                                <img src="{{ url_for('static', filename='espresso.png') }}"
+                                                                                alt="Espresso">
+                                                                <span>Espresso</span>
+                                                </div>
+                                                <div class="coffee-item" data-item="Mocha">
+                                                                <img src="{{ url_for('static', filename='mocha.png') }}"
+                                                                                alt="Mocha">
+                                                                <span>Mocha</span>
+                                                </div>
+                                                <div class="coffee-item" data-item="Chocolate">
+                                                                <img src="{{ url_for('static', filename='chocolate.png') }}"
+                                                                                alt="Chocolate">
+                                                                <span>Chocolate</span>
+                                                </div>
+                                                <div class="coffee-item" data-item="Americano">
+                                                                <img src="{{ url_for('static', filename='americano.png') }}"
+                                                                                alt="Americano">
+                                                                <span>Americano</span>
+                                                </div>
+                                                <div class="coffee-item" data-item="Cold Brew">
+                                                                <img src="{{ url_for('static', filename='cold_brew.png') }}"
+                                                                                alt="Cold Brew">
+                                                                <span>Cold Brew</span>
+                                                </div>
+                                                <div class="coffee-item" data-item="Cold Milk Brew">
+                                                                <img src="{{ url_for('static', filename='cold_milk_brew.png') }}"
+                                                                                alt="Cold Milk Brew">
+                                                                <span>Cold Milk Brew</span>
+                                                </div>
+                                </div>
+                                <button id="proceed-to-checkout">Proceed to Checkout</button>
+                </div>
+
+                <div id="checkout-page">
+                                <h1>Checkout</h1>
+                                <p>Please enter your name, phone number and your location.</p>
+                                <form id="checkout-form">
+                                                <input type="text" id="name" placeholder="Name" required>
+                                                <input type="tel" id="phone" placeholder="Phone Number" required>
+                                                <input type="text" id="location" placeholder="Where are you from?"
+                                                                required>
+                                                <button type="submit">Place Order</button>
+                                </form>
+                </div>
+
+                <script>
+                                let selectedItem = null;
+                                const coffeeItems = document.querySelectorAll('.coffee-item');
+                                const proceedButton = document.getElementById('proceed-to-checkout');
+                                const orderPage = document.getElementById('order-page');
+                                const checkoutPage = document.getElementById('checkout-page');
+                                const checkoutForm = document.getElementById('checkout-form');
+
+                                coffeeItems.forEach(item => {
+                                                item.addEventListener('click', () => {
+                                                                coffeeItems.forEach(i => i.classList.remove('selected'));
+                                                                item.classList.add('selected');
+                                                                selectedItem = item.dataset.item;
+                                                });
+                                });
+
+                                proceedButton.addEventListener('click', () => {
+                                                if (selectedItem) {
+                                                                orderPage.style.display = 'none';
+                                                                checkoutPage.style.display = 'block';
+                                                } else {
+                                                                alert('Please select a coffee item before proceeding to checkout.');
+                                                }
+                                });
+
+                                checkoutForm.addEventListener('submit', async (e) => {
+                                                e.preventDefault();
+                                                const name = document.getElementById('name').value;
+                                                const phone = document.getElementById('phone').value;
+                                                const location = document.getElementById('location').value;
+
+                                                const orderData = {
+                                                                item: selectedItem,
+                                                                name: name,
+                                                                phone: phone,
+                                                                location: location
+                                                };
+
+                                                try {
+                                                                const response = await fetch('/place_order', {
+                                                                                method: 'POST',
+                                                                                headers: {
+                                                                                                'Content-Type': 'application/json',
+                                                                                },
+                                                                                body: JSON.stringify(orderData),
+                                                                });
+
+                                                                if (!response.ok) {
+                                                                                throw new Error(`HTTP error! status: ${response.status}`);
+                                                                }
+
+                                                                const result = await response.json();
+                                                                if (result.success) {
+                                                                                window.location.href = `/order_status/${result.order_id}`;
+                                                                } else {
+                                                                                alert('There was an error placing your order. Please try again.');
+                                                                }
+                                                } catch (error) {
+                                                                console.error('Error:', error);
+                                                                alert('There was an error placing your order. Please try again.');
+                                                }
+                                });
+                </script>
+</body>
+
+</html>

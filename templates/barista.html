@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Barista Display</title>
+                <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+                <style>
+                                body {
+                                                font-family: Arial, sans-serif;
+                                                line-height: 1.6;
+                                                padding: 20px;
+                                                max-width: 1200px;
+                                                margin: 0 auto;
+                                                background-color: #f4f4f4;
+                                }
+
+                                h1,
+                                h2 {
+                                                text-align: center;
+                                }
+
+                                .filter-buttons,
+                                .toggle-buttons {
+                                                display: flex;
+                                                justify-content: center;
+                                                gap: 10px;
+                                                margin-bottom: 20px;
+                                }
+
+                                .filter-button,
+                                .toggle-button {
+                                                padding: 10px 20px;
+                                                border: none;
+                                                border-radius: 5px;
+                                                background-color: #4CAF50;
+                                                color: white;
+                                                cursor: pointer;
+                                                transition: background-color 0.3s;
+                                }
+
+                                .filter-button:hover,
+                                .toggle-button:hover {
+                                                background-color: #45a049;
+                                }
+
+                                .filter-button.active,
+                                .toggle-button.active {
+                                                background-color: #45a049;
+                                }
+
+                                .order-item {
+                                                background-color: #fff;
+                                                border: 1px solid #ddd;
+                                                border-radius: 5px;
+                                                padding: 15px;
+                                                margin-bottom: 10px;
+                                                display: flex;
+                                                justify-content: space-between;
+                                                align-items: center;
+                                }
+
+                                .order-item.pending {
+                                                background-color: #fff9c4;
+                                }
+
+                                .order-item.completed {
+                                                background-color: #c8e6c9;
+                                }
+
+                                .order-details {
+                                                flex-grow: 1;
+                                }
+
+                                .order-number {
+                                                font-weight: bold;
+                                                margin-right: 15px;
+                                }
+
+                                .complete-button {
+                                                padding: 5px 10px;
+                                                background-color: #4CAF50;
+                                                color: white;
+                                                border: none;
+                                                border-radius: 3px;
+                                                cursor: pointer;
+                                }
+
+                                .complete-button:hover {
+                                                background-color: #45a049;
+                                }
+
+                                .summary {
+                                                background-color: #e0e0e0;
+                                                padding: 15px;
+                                                border-radius: 5px;
+                                                margin-bottom: 20px;
+                                }
+
+                                .summary-item {
+                                                display: inline-block;
+                                                margin-right: 15px;
+                                }
+                </style>
+</head>
+
+<body>
+                <h1>Barista Display</h1>
+                <div class="toggle-buttons">
+                                <button class="toggle-button" id="toggle-all-summary">Toggle All Orders Summary</button>
+                                <button class="toggle-button" id="toggle-pending-summary">Toggle Pending Orders
+                                                Summary</button>
+                </div>
+                <div class="summary" id="all-order-summary" style="display: none;"></div>
+                <div class="summary" id="pending-order-summary" style="display: none;"></div>
+                <div class="filter-buttons">
+                                <button class="filter-button active" data-filter="all">All Orders</button>
+                                <button class="filter-button" data-filter="pending">Pending Orders</button>
+                                <button class="filter-button" data-filter="completed">Completed Orders</button>
+                </div>
+                <div id="orders-container"></div>
+
+                <script>
+                                function createOrderElement(order) {
+                                                const orderElement = document.createElement('div');
+                                                orderElement.className = `order-item ${order.status}`;
+
+                                                const completionTime = order.completion_time ? new Date(order.completion_time) : null;
+                                                const orderTime = new Date(order.order_date);
+                                                const timeDiff = completionTime ? (completionTime - orderTime) / 1000 / 60 : null; // in minutes
+
+                                                orderElement.innerHTML = `
+                <div class="order-details">
+                        <h3>${order.item} for ${order.name}</h3>
+                        <p>Phone: ${order.phone} | Location: ${order.location}</p>
+                        <p>Order Time: ${orderTime.toLocaleString()}</p>
+                        ${completionTime ? `<p>Completion Time: ${completionTime.toLocaleString()} (${timeDiff.toFixed(2)} minutes)</p>` : ''}
+                </div>
+                <div>
+                        <span class="order-number">Order #${order.id}</span>
+                        ${order.status === 'pending' ? `<button class="complete-button" onclick="completeOrder(${order.id})">Complete Order</button>` : ''}
+                </div>
+            `;
+                                                return orderElement;
+                                }
+
+                                function updateSummary(orders, summaryElementId) {
+                                                const summary = {};
+                                                orders.forEach(order => {
+                                                                if (summary[order.item]) {
+                                                                                summary[order.item]++;
+                                                                } else {
+                                                                                summary[order.item] = 1;
+                                                                }
+                                                });
+
+                                                const summaryElement = document.getElementById(summaryElementId);
+                                                summaryElement.innerHTML = `<h2>${summaryElementId === 'all-order-summary' ? 'All Orders' : 'Pending Orders'} Summary</h2>`;
+                                                for (const [item, count] of Object.entries(summary)) {
+                                                                summaryElement.innerHTML += `<span class="summary-item">${item}: ${count}</span>`;
+                                                }
+                                }
+
+                                async function fetchOrders() {
+                                                const response = await fetch('/get_orders');
+                                                const orders = await response.json();
+                                                return orders;
+                                }
+
+                                async function displayOrders(filter = 'all') {
+                                                const orders = await fetchOrders();
+                                                updateSummary(orders, 'all-order-summary');
+                                                updateSummary(orders.filter(order => order.status === 'pending'), 'pending-order-summary');
+                                                const ordersContainer = document.getElementById('orders-container');
+                                                ordersContainer.innerHTML = '';
+                                                orders.forEach(order => {
+                                                                if (filter === 'all' || order.status === filter) {
+                                                                                ordersContainer.appendChild(createOrderElement(order));
+                                                                }
+                                                });
+                                }
+
+                                async function completeOrder(orderId) {
+                                                const response = await fetch(`/complete_order/${orderId}`, { method: 'POST' });
+                                                const result = await response.json();
+                                                if (result.success) {
+                                                                displayOrders(getCurrentFilter());
+                                                }
+                                }
+
+                                function getCurrentFilter() {
+                                                return document.querySelector('.filter-button.active').dataset.filter;
+                                }
+
+                                document.querySelectorAll('.filter-button').forEach(button => {
+                                                button.addEventListener('click', () => {
+                                                                document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+                                                                button.classList.add('active');
+                                                                displayOrders(button.dataset.filter);
+                                                });
+                                });
+
+                                document.getElementById('toggle-all-summary').addEventListener('click', function () {
+                                                const summary = document.getElementById('all-order-summary');
+                                                summary.style.display = summary.style.display === 'none' ? 'block' : 'none';
+                                                this.classList.toggle('active');
+                                });
+
+                                document.getElementById('toggle-pending-summary').addEventListener('click', function () {
+                                                const summary = document.getElementById('pending-order-summary');
+                                                summary.style.display = summary.style.display === 'none' ? 'block' : 'none';
+                                                this.classList.toggle('active');
+                                });
+
+                                displayOrders();
+                                setInterval(() => displayOrders(getCurrentFilter()), 10000); // Refresh every 10 seconds
+                </script>
+</body>
+
+</html>
